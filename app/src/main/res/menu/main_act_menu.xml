@@ -7,11 +7,11 @@
         <item
             android:id="@+id/action_scan_local"
             android:checked="true"
-            android:title="Local"
+            android:title="@string/menu_ml_local_option"
             app:showAsAction="never" />
         <item
             android:id="@+id/action_scan_remote"
-            android:title="Remote"
+            android:title="@string/menu_ml_remote_option"
             app:showAsAction="never" />
     </group>
 </menu>

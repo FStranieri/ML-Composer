@@ -22,9 +22,9 @@ android {
     signingConfigs {
         debug {
             storeFile file("debugkeystore.jks")
-            storePassword 'Test123'
+            storePassword 'test123'
             keyAlias 'key0'
-            keyPassword 'Test123'
+            keyPassword 'test123'
         }
     }
 
@@ -90,6 +90,9 @@ dependencies {
     implementation 'androidx.compose.runtime:runtime-livedata:1.0.5'
     implementation "androidx.constraintlayout:constraintlayout-compose:1.0.0-rc02"
     implementation "androidx.navigation:navigation-compose:2.4.0-beta02"
+
+    //Compose permissions
+    implementation "com.google.accompanist:accompanist-permissions:0.21.3-beta"
 
     //ML text recognition
     implementation 'com.huawei.hms:ml-computer-vision-ocr:3.2.0.300'

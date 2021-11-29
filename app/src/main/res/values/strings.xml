@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">ML Composer</string>
+    <string name="camera_permission_info_0">The camera is mandatory in order to use the vision ML kit abilities. Please grant the permission.</string>
+    <string name="camera_permission_info_1">The camera is mandatory in order to use the vision ML kit abilities. Please grant the permission going to the settings screen.</string>
+    <string name="camera_permission_grantbutton_0">GRANT PERMISSION</string>
+    <string name="camera_permission_grantbutton_1">GO TO SETTINGS</string>
+    <string name="camera_scan_button">SCAN</string>
+    <string name="go_to_camerascreen_button">CAMERA</string>
+    <string name="camera_output_result">TEXT RECOGNITION RESULT</string>
+    <string name="menu_ml_local_option">Local</string>
+    <string name="menu_ml_remote_option">Remote</string>
 </resources>

@@ -16,14 +16,12 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.FloatingActionButton
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,10 +44,19 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.PermissionRequired
+import com.google.accompanist.permissions.rememberPermissionState
 import com.huawei.hms.mlsdk.common.MLApplication
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Alignment
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.compose.ui.res.stringResource
 
 
 class MainActivity : AppCompatActivity() {
@@ -63,6 +70,7 @@ class MainActivity : AppCompatActivity() {
 
     private val textRecognitionViewModel: TextRecognitionViewModel by viewModels()
 
+    @ExperimentalPermissionsApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -94,51 +102,93 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    @ExperimentalPermissionsApi
     @androidx.compose.ui.tooling.preview.Preview
     @Composable
     private fun BuildCameraUI() {
-        ConstraintLayout(Modifier.fillMaxSize()) {
-            val (preview, takePhotoButton, progress) = createRefs()
-
-            AndroidView(
-                modifier = Modifier.constrainAs(preview) {
-                    linkTo(top = parent.top, bottom = parent.bottom)
-                    linkTo(start = parent.start, end = parent.end)
-                    width = Dimension.fillToConstraints
-                    height = Dimension.fillToConstraints
-                }, // Occupy the max size in the Compose UI tree
-                factory = {
-                    PreviewView(this@MainActivity).also {
-                        previewView = it
+        val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
+        PermissionRequired(
+            permissionState = cameraPermissionState,
+            permissionNotGrantedContent = {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .then(Modifier.padding(16.dp)),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(stringResource(R.string.camera_permission_info_0))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row {
+                        Button(onClick = {
+                            cameraPermissionState.launchPermissionRequest()
+                        }) {
+                            Text(stringResource(R.string.camera_permission_grantbutton_0))
+                        }
                     }
-                },
-                update = {
-                    checkCameraPermissions()
                 }
-            )
-
-            Button(modifier = Modifier.constrainAs(takePhotoButton) {
-                linkTo(start = parent.start, end = parent.end)
-                bottom.linkTo(parent.bottom, 16.dp)
-                width = Dimension.preferredWrapContent
-                height = Dimension.preferredWrapContent
-            }, onClick = { takePhoto() })
-            {
-                Text("SCAN")
+            },
+            permissionNotAvailableContent = {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .then(Modifier.padding(16.dp)),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(stringResource(R.string.camera_permission_info_1))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row {
+                        Button(onClick = {
+                            openSettingsScreen()
+                        }) {
+                            Text(stringResource(R.string.camera_permission_grantbutton_1))
+                        }
+                    }
+                }
             }
-
-            val isLoading = remember { textRecognitionViewModel.getLoadingProgress() }
-            CircularProgressIndicator(
-                modifier = Modifier
-                    .constrainAs(progress) {
+        ) {
+            ConstraintLayout(Modifier.fillMaxSize()) {
+                val (preview, takePhotoButton, progress) = createRefs()
+                AndroidView(
+                    modifier = Modifier.constrainAs(preview) {
                         linkTo(top = parent.top, bottom = parent.bottom)
                         linkTo(start = parent.start, end = parent.end)
-                        width = Dimension.value(80.dp)
-                        height = Dimension.value(80.dp)
+                        width = Dimension.fillToConstraints
+                        height = Dimension.fillToConstraints
+                    }, // Occupy the max size in the Compose UI tree
+                    factory = {
+                        PreviewView(this@MainActivity).also {
+                            previewView = it
+                        }
+                    },
+                    update = {
+                        checkCameraPermissions()
                     }
-                    .then(Modifier.alpha(if (isLoading.value) 1f else 0f)),
-            )
+                )
+
+                Button(modifier = Modifier.constrainAs(takePhotoButton) {
+                    linkTo(start = parent.start, end = parent.end)
+                    bottom.linkTo(parent.bottom, 16.dp)
+                    width = Dimension.preferredWrapContent
+                    height = Dimension.preferredWrapContent
+                }, onClick = { takePhoto() })
+                {
+                    Text(stringResource(R.string.camera_scan_button))
+                }
+
+                val isLoading = remember { textRecognitionViewModel.getLoadingProgress() }
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .constrainAs(progress) {
+                            linkTo(top = parent.top, bottom = parent.bottom)
+                            linkTo(start = parent.start, end = parent.end)
+                            width = Dimension.value(80.dp)
+                            height = Dimension.value(80.dp)
+                        }
+                        .then(Modifier.alpha(if (isLoading.value) 1f else 0f)),
+                )
+            }
         }
+
     }
 
     @androidx.compose.ui.tooling.preview.Preview
@@ -158,7 +208,7 @@ class MainActivity : AppCompatActivity() {
                         height = Dimension.wrapContent
                     }
                     .then(Modifier.padding(16.dp)),
-                text = "TEXT RECOGNITION RESULT",
+                text = stringResource(R.string.camera_output_result),
                 style = TextStyle(fontStyle = FontStyle.Italic),
                 fontWeight = FontWeight.Bold
             )
@@ -197,9 +247,16 @@ class MainActivity : AppCompatActivity() {
                 navController.popBackStack()
             })
             {
-                Text("CAMERA")
+                Text(stringResource(R.string.go_to_camerascreen_button))
             }
         }
+    }
+
+    private fun openSettingsScreen() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        val uri: Uri = Uri.fromParts("package", packageName, null)
+        intent.data = uri
+        startActivity(intent)
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -214,6 +271,8 @@ class MainActivity : AppCompatActivity() {
             R.id.action_scan_remote ->
                 textRecognitionViewModel.initializeMLRemoteTextAnalyzer()
         }
+
+        item.isChecked = true
 
         return true
     }
