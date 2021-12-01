@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -51,7 +50,6 @@ import com.huawei.hms.mlsdk.common.MLApplication
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.Alignment
 import android.content.Intent
 import android.net.Uri
@@ -161,7 +159,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     },
                     update = {
-                        checkCameraPermissions()
+                        startCamera()
                     }
                 )
 
@@ -275,17 +273,6 @@ class MainActivity : AppCompatActivity() {
         item.isChecked = true
 
         return true
-    }
-
-    private fun checkCameraPermissions() {
-        // Request camera permissions
-        if (allPermissionsGranted()) {
-            startCamera()
-        } else {
-            ActivityCompat.requestPermissions(
-                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
-            )
-        }
     }
 
     private fun takePhoto() {
