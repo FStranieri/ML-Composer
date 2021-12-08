@@ -6,6 +6,7 @@
     <string name="camera_permission_grantbutton_1">GO TO SETTINGS</string>
     <string name="camera_scan_button">SCAN</string>
     <string name="go_to_camerascreen_button">CAMERA</string>
+    <string name="translate_button">TRANSLATE</string>
     <string name="camera_output_result">TEXT RECOGNITION RESULT</string>
     <string name="menu_ml_local_option">Local</string>
     <string name="menu_ml_remote_option">Remote</string>
