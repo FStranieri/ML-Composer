@@ -1,4 +1,4 @@
-package com.fs.sample.cameraxMLsample
+package com.fs.sample.cameraxMLsample.viewmodel
 
 import android.graphics.Bitmap
 import androidx.compose.runtime.MutableState
@@ -18,10 +18,12 @@ class TextRecognitionViewModel: ViewModel() {
     private lateinit var mlAnalyzer: MLTextAnalyzer
 
     private var output: MutableLiveData<String> = MutableLiveData()
+    var showOutput: MutableState<Boolean> = mutableStateOf(false)
     private var failureOutput: MutableLiveData<Exception> = MutableLiveData()
 
     private var loadingProgress: MutableState<Boolean> = mutableStateOf(false)
 
+    //with this config we are using the sdk only, scanning latin characters
     fun initializeMLLocalTextAnalyzer() {
         val setting = MLLocalTextSetting.Factory()
             .setOCRMode(MLLocalTextSetting.OCR_DETECT_MODE)
@@ -30,10 +32,11 @@ class TextRecognitionViewModel: ViewModel() {
         this.mlAnalyzer = MLAnalyzerFactory.getInstance().getLocalTextAnalyzer(setting)
     }
 
+    //with this config we are able to recognize both latin and chinese characters using the cloud
     fun initializeMLRemoteTextAnalyzer() {
         val setting = MLRemoteTextSetting.Factory()
             .setTextDensityScene(MLRemoteTextSetting.OCR_LOOSE_SCENE)
-            .setLanguageList(mutableListOf("en"))
+            .setLanguageList(mutableListOf("en", "zh"))
             .setBorderType(MLRemoteTextSetting.ARC)
             .create()
         this.mlAnalyzer = MLAnalyzerFactory.getInstance().getRemoteTextAnalyzer(setting)
@@ -51,7 +54,7 @@ class TextRecognitionViewModel: ViewModel() {
         return loadingProgress
     }
 
-    fun setLoading (loading: Boolean) {
+    private fun setLoading (loading: Boolean) {
         this.loadingProgress.value = loading
     }
 
@@ -62,6 +65,7 @@ class TextRecognitionViewModel: ViewModel() {
             addOnSuccessListener {
                 setLoading(false)
                 output.value = it.stringValue
+                showOutput.value = true
             }
             addOnFailureListener {
                 setLoading(false)
