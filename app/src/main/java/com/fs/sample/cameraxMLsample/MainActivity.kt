@@ -3,16 +3,19 @@ package com.fs.sample.cameraxMLsample
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
-import android.view.Menu
-import android.view.MenuItem
+import android.util.Size
+import android.view.*
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.camera.core.*
@@ -21,6 +24,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.remember
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -36,8 +40,39 @@ import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
     private var imageCapture: ImageCapture? = null
+    private var imageAnalysis: ImageAnalysis? = null
 
     private lateinit var cameraExecutor: ExecutorService
+
+    private inline val windowHeight: Int
+        @RequiresApi(Build.VERSION_CODES.M)
+        get() {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val metrics = windowManager.currentWindowMetrics
+                val insets = metrics.windowInsets.getInsets(WindowInsets.Type.systemBars())
+                metrics.bounds.height() - insets.bottom - insets.top
+            } else {
+                val view = window.decorView
+                val insets = WindowInsetsCompat.toWindowInsetsCompat(view.rootWindowInsets, view)
+                    .getInsets(WindowInsetsCompat.Type.systemBars())
+                resources.displayMetrics.heightPixels - insets.bottom - insets.top
+            }
+        }
+
+    private inline val windowWidth: Int
+        @RequiresApi(Build.VERSION_CODES.M)
+        get() {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val metrics = windowManager.currentWindowMetrics
+                val insets = metrics.windowInsets.getInsets(WindowInsets.Type.systemBars())
+                metrics.bounds.width() - insets.left - insets.right
+            } else {
+                val view = window.decorView
+                val insets = WindowInsetsCompat.toWindowInsetsCompat(view.rootWindowInsets, view)
+                    .getInsets(WindowInsetsCompat.Type.systemBars())
+                resources.displayMetrics.widthPixels - insets.left - insets.right
+            }
+        }
 
     private val textRecognitionViewModel: TextRecognitionViewModel by viewModels()
     private val textTranslationViewModel: TextTranslationViewModel by viewModels()
@@ -68,6 +103,7 @@ class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
                         listener = object : TextRecognitionComposableInterface {
                             override fun onCameraBackButtonClick() {
                                 textRecognitionViewModel.showOutput.value = false
+                                navController.popBackStack()
                             }
 
                             override fun onLanguageToTranslateSelected(lang: String) {
@@ -81,16 +117,11 @@ class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
 
             if (showTextRecognitionOutput.value) {
                 navController.navigate(NAV_TEXTRECOG) {
-                    launchSingleTop = true
-                }
-            }
+                    popUpTo(route = NAV_MAIN) {
+                        this.inclusive = false
+                    }
 
-            BackHandler(true) {
-                if (navController.currentBackStackEntry?.destination?.route == NAV_TEXTRECOG) {
-                    textRecognitionViewModel.showOutput.value = false
-                    navController.popBackStack()
-                } else {
-                    finish()
+                    this.launchSingleTop = true
                 }
             }
         }
@@ -142,7 +173,21 @@ class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
         buffer.rewind()
         val bytes = ByteArray(buffer.capacity())
         buffer.get(bytes)
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size).let {
+            //workaround: some devices are capturing rotated pictures, causing ML recog to fail
+            val rotation =
+                if (imageInfo.rotationDegrees != 0 && windowHeight > windowWidth) 90f else 0f
+            val matrix = Matrix()
+            matrix.postRotate(rotation)
+
+            val bitmap = Bitmap.createScaledBitmap(
+                it,
+                it.width,
+                it.height,
+                false
+            )
+            return@let Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, false)
+        }
     }
 
     override fun onStartCamera(preview: Preview) {
@@ -153,10 +198,16 @@ class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
             imageCapture = ImageCapture.Builder()
+                .setTargetResolution(Size(1024, 768))
+                .build()
+
+            imageAnalysis = ImageAnalysis.Builder()
                 .build()
 
             // Select back camera as a default
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            val cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                .build()
 
             try {
                 // Unbind use cases before rebinding
@@ -164,7 +215,7 @@ class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
 
                 // Bind use cases to camera
                 cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, imageCapture
+                    this, cameraSelector, preview, imageAnalysis, imageCapture
                 )
 
             } catch (exc: Exception) {
@@ -188,8 +239,7 @@ class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
         imageCapture.takePicture(cameraExecutor,
             object : ImageCapture.OnImageCapturedCallback() {
                 override fun onCaptureSuccess(image: ImageProxy) {
-                    val bitmap = image.convertImageProxyToBitmap()
-                    textRecognitionViewModel.scan(bitmap)
+                    textRecognitionViewModel.scan(image.convertImageProxyToBitmap())
                     image.close()
                 }
 
