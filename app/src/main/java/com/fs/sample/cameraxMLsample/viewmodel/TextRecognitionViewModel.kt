@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.fs.sample.cameraxMLsample.utils.Languages
 import com.huawei.hms.mlsdk.MLAnalyzerFactory
 import com.huawei.hms.mlsdk.common.MLFrame
 import com.huawei.hms.mlsdk.text.MLLocalTextSetting
@@ -27,7 +28,7 @@ class TextRecognitionViewModel: ViewModel() {
     fun initializeMLLocalTextAnalyzer() {
         val setting = MLLocalTextSetting.Factory()
             .setOCRMode(MLLocalTextSetting.OCR_DETECT_MODE)
-            .setLanguage("en")
+            .setLanguage(Languages.ENGLISH.value)
             .create()
         this.mlAnalyzer = MLAnalyzerFactory.getInstance().getLocalTextAnalyzer(setting)
     }
@@ -36,7 +37,7 @@ class TextRecognitionViewModel: ViewModel() {
     fun initializeMLRemoteTextAnalyzer() {
         val setting = MLRemoteTextSetting.Factory()
             .setTextDensityScene(MLRemoteTextSetting.OCR_LOOSE_SCENE)
-            .setLanguageList(mutableListOf("en", "zh"))
+            .setLanguageList(mutableListOf(Languages.ENGLISH.value, Languages.CHINESE.value))
             .setBorderType(MLRemoteTextSetting.ARC)
             .create()
         this.mlAnalyzer = MLAnalyzerFactory.getInstance().getRemoteTextAnalyzer(setting)
