@@ -1,26 +1,19 @@
 package com.fs.sample.cameraxMLsample
 
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
-import android.view.Menu
-import android.view.MenuItem
+import android.view.*
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.camera.core.*
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.remember
-import androidx.core.content.ContextCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -30,14 +23,9 @@ import com.fs.sample.cameraxMLsample.viewmodel.TextTranslationViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.huawei.hms.mlsdk.common.MLApplication
 import java.util.*
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 
 class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
-    private var imageCapture: ImageCapture? = null
-
-    private lateinit var cameraExecutor: ExecutorService
 
     private val textRecognitionViewModel: TextRecognitionViewModel by viewModels()
     private val textTranslationViewModel: TextTranslationViewModel by viewModels()
@@ -68,6 +56,7 @@ class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
                         listener = object : TextRecognitionComposableInterface {
                             override fun onCameraBackButtonClick() {
                                 textRecognitionViewModel.showOutput.value = false
+                                navController.popBackStack()
                             }
 
                             override fun onLanguageToTranslateSelected(lang: String) {
@@ -81,23 +70,17 @@ class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
 
             if (showTextRecognitionOutput.value) {
                 navController.navigate(NAV_TEXTRECOG) {
-                    launchSingleTop = true
-                }
-            }
+                    popUpTo(route = NAV_MAIN) {
+                        textRecognitionViewModel.showOutput.value = false
+                        this.inclusive = false
+                    }
 
-            BackHandler(true) {
-                if (navController.currentBackStackEntry?.destination?.route == NAV_TEXTRECOG) {
-                    textRecognitionViewModel.showOutput.value = false
-                    navController.popBackStack()
-                } else {
-                    finish()
+                    this.launchSingleTop = true
                 }
             }
         }
 
         MLApplication.getInstance().apiKey = resources.getString(R.string.app_client_api_key)
-
-        cameraExecutor = Executors.newSingleThreadExecutor()
 
         manageTextRecognition()
         manageTextTranslation()
@@ -137,43 +120,6 @@ class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
         return true
     }
 
-    private fun ImageProxy.convertImageProxyToBitmap(): Bitmap {
-        val buffer = planes[0].buffer
-        buffer.rewind()
-        val bytes = ByteArray(buffer.capacity())
-        buffer.get(bytes)
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-    }
-
-    override fun onStartCamera(preview: Preview) {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
-        cameraProviderFuture.addListener({
-            // Used to bind the lifecycle of cameras to the lifecycle owner
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-
-            imageCapture = ImageCapture.Builder()
-                .build()
-
-            // Select back camera as a default
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-            try {
-                // Unbind use cases before rebinding
-                cameraProvider.unbindAll()
-
-                // Bind use cases to camera
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, imageCapture
-                )
-
-            } catch (exc: Exception) {
-                Log.e(TAG, "Use case binding failed", exc)
-            }
-
-        }, ContextCompat.getMainExecutor(this))
-    }
-
     override fun onOpenSettingsClick() {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
         val uri: Uri = Uri.fromParts("package", packageName, null)
@@ -181,30 +127,8 @@ class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
         startActivity(intent)
     }
 
-    override fun onTakePhotoClick() {
-        // Get a stable reference of the modifiable image capture use case
-        val imageCapture = imageCapture ?: return
-
-        imageCapture.takePicture(cameraExecutor,
-            object : ImageCapture.OnImageCapturedCallback() {
-                override fun onCaptureSuccess(image: ImageProxy) {
-                    val bitmap = image.convertImageProxyToBitmap()
-                    textRecognitionViewModel.scan(bitmap)
-                    image.close()
-                }
-
-                override fun onError(exception: ImageCaptureException) {
-                    runOnUiThread {
-                        Toast.makeText(this@MainActivity, exception.message, Toast.LENGTH_LONG)
-                            .show()
-                    }
-                }
-            })
-    }
-
     override fun onDestroy() {
         super.onDestroy()
-        cameraExecutor.shutdown()
     }
 
     companion object {
