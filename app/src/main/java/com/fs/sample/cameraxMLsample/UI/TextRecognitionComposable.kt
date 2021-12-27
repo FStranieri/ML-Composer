@@ -1,5 +1,6 @@
 package com.fs.sample.cameraxMLsample.UI
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -27,6 +28,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -61,6 +63,13 @@ fun BindTextRecognitionOutput(
         val textValue by textRecognitionViewModel.getOutput().observeAsState()
         val languages by textTranslationViewModel.supportedLanguages.observeAsState()
         val translation by textTranslationViewModel.getOutput().observeAsState()
+        val texxTranslationFailure by textTranslationViewModel.getFailureOutput().observeAsState()
+
+        texxTranslationFailure?.let {
+            Toast.makeText(LocalContext.current, it.message, Toast.LENGTH_LONG).show()
+            textTranslationViewModel.resetFailureOutput()
+        }
+
         val scrollState = rememberScrollState(0)
         val transScrollState = rememberScrollState(0)
 
@@ -72,7 +81,7 @@ fun BindTextRecognitionOutput(
                     width = Dimension.wrapContent
                     height = Dimension.wrapContent
                 }
-                .then(Modifier.padding(16.dp)),
+                .padding(16.dp),
             text = stringResource(R.string.camera_output_result),
             style = TextStyle(fontStyle = FontStyle.Italic),
             fontWeight = FontWeight.Bold
@@ -85,15 +94,11 @@ fun BindTextRecognitionOutput(
                 width = Dimension.fillToConstraints
                 height = Dimension.fillToConstraints
             }
-            .then(
-                Modifier.padding(16.dp)
-            )
-            .then(
-                Modifier.border(
-                    width = 4.dp,
-                    color = colorResource(id = R.color.purple_500),
-                    shape = RectangleShape
-                )
+            .padding(16.dp)
+            .border(
+                width = 4.dp,
+                color = colorResource(id = R.color.purple_500),
+                shape = RectangleShape
             )) {
             Text(
                 text = textValue ?: "",
@@ -167,7 +172,7 @@ fun BindTextRecognitionOutput(
                         colorResource(id = R.color.purple_500),
                         shape = RoundedCornerShape(8.dp)
                     )
-                    .then(Modifier.padding(16.dp)),
+                    .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 AnimatedVisibility(

@@ -8,14 +8,19 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Button
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Text
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -78,9 +83,15 @@ fun BuildCameraUI(
         }
     ) {
         ConstraintLayout(Modifier.fillMaxSize()) {
-            val (preview, takePhotoButton, progress) = createRefs()
+            val (preview, takePhotoButton, progress, modeButton) = createRefs()
             val executor = remember(context) { ContextCompat.getMainExecutor(context) }
-            var imageCapture: MutableState<ImageCapture?> = remember { mutableStateOf(null) }
+            val imageCapture: MutableState<ImageCapture?> = remember { mutableStateOf(null) }
+            val textRecognitionFailure by textRecognitionViewModel.getFailureOutput().observeAsState()
+
+            textRecognitionFailure?.let {
+                Toast.makeText(LocalContext.current, it.message, Toast.LENGTH_LONG).show()
+                textRecognitionViewModel.resetFailureOutput()
+            }
 
             MLCameraView(
                 modifier = Modifier.constrainAs(preview) {
@@ -119,6 +130,23 @@ fun BuildCameraUI(
             })
             {
                 Text(stringResource(R.string.camera_scan_button))
+            }
+
+            val cloudMode by remember { textRecognitionViewModel.cloudMode }
+            FloatingActionButton(
+                modifier = Modifier
+                    .constrainAs(modeButton) {
+                        bottom.linkTo(parent.bottom, 16.dp)
+                        end.linkTo(parent.end, 16.dp)
+                    },
+                onClick = {
+                    textRecognitionViewModel.toggleCloudMode(!cloudMode)
+                },
+                backgroundColor = colorResource(id = R.color.purple_500),
+                contentColor = Color.White
+            ) {
+                Icon(if (cloudMode) Icons.Filled.CloudOff else Icons.Filled.Cloud
+                        , if (cloudMode) "CLOUD" else "SDK/LOCAL")
             }
 
             val isLoading = remember { textRecognitionViewModel.getLoadingProgress() }
