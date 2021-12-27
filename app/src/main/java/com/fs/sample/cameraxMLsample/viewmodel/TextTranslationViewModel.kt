@@ -26,6 +26,10 @@ class TextTranslationViewModel : ViewModel() {
     var showTranslation: MutableState<Boolean> = mutableStateOf(false)
         private set
 
+    init {
+        initializeMLRemoteTranslator("en")
+    }
+
     //using the cloud, ignoring the source language
     fun initializeMLRemoteTranslator(lang: String) {
         // Create a text translator using custom parameter settings.
@@ -50,6 +54,10 @@ class TextTranslationViewModel : ViewModel() {
 
     fun getFailureOutput(): LiveData<Exception> {
         return failureOutput
+    }
+
+    fun resetFailureOutput() {
+        this.failureOutput.value = null
     }
 
     fun getLoadingProgress(): MutableState<Boolean> {

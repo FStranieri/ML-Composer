@@ -3,19 +3,29 @@ package com.fs.sample.cameraxMLsample.UI
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Button
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Text
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -78,10 +88,18 @@ fun BuildCameraUI(
         }
     ) {
         ConstraintLayout(Modifier.fillMaxSize()) {
-            val (preview, takePhotoButton, progress) = createRefs()
+            val (preview, takePhotoButton, progress, modeButton, storageButton) = createRefs()
             val executor = remember(context) { ContextCompat.getMainExecutor(context) }
-            var imageCapture: MutableState<ImageCapture?> = remember { mutableStateOf(null) }
+            val imageCapture: MutableState<ImageCapture?> = remember { mutableStateOf(null) }
+            val textRecognitionFailure by textRecognitionViewModel.getFailureOutput()
+                .observeAsState()
 
+            textRecognitionFailure?.let {
+                Toast.makeText(LocalContext.current, it.message, Toast.LENGTH_LONG).show()
+                textRecognitionViewModel.resetFailureOutput()
+            }
+
+            //CAMERA VIEW
             MLCameraView(
                 modifier = Modifier.constrainAs(preview) {
                     linkTo(top = parent.top, bottom = parent.bottom)
@@ -94,6 +112,7 @@ fun BuildCameraUI(
                 executor = executor
             )
 
+            //SCAN BUTTON FOR TEXT RECOGNITION
             Button(modifier = Modifier.constrainAs(takePhotoButton) {
                 linkTo(start = parent.start, end = parent.end)
                 bottom.linkTo(parent.bottom, 16.dp)
@@ -121,6 +140,66 @@ fun BuildCameraUI(
                 Text(stringResource(R.string.camera_scan_button))
             }
 
+            //REMOTE OR SDK MODE TOGGLE BUTTON FOR TEXT RECOGNITION
+            val cloudMode by remember { textRecognitionViewModel.cloudMode }
+            FloatingActionButton(
+                modifier = Modifier
+                    .constrainAs(modeButton) {
+                        bottom.linkTo(parent.bottom, 16.dp)
+                        end.linkTo(parent.end, 16.dp)
+                    },
+                onClick = {
+                    textRecognitionViewModel.toggleCloudMode(!cloudMode)
+                },
+                backgroundColor = colorResource(id = R.color.purple_500),
+                contentColor = Color.White
+            ) {
+                Icon(
+                    if (cloudMode) Icons.Filled.CloudOff else Icons.Filled.Cloud,
+                    if (cloudMode) "CLOUD" else "SDK/LOCAL"
+                )
+            }
+
+            //BUTTON TO GET A PICTURE FROM THE STORAGE AND IMAGE URI MANAGEMENT
+            var imageUri by remember { mutableStateOf<Uri?>(null) }
+            imageUri?.let {
+                textRecognitionViewModel.scan(
+                    if (Build.VERSION.SDK_INT < 28) {
+                        MediaStore.Images
+                            .Media.getBitmap(context.contentResolver, it)
+
+                    } else {
+                        val source = ImageDecoder
+                            .createSource(context.contentResolver, it)
+                        ImageDecoder.decodeBitmap(source)
+                    }
+                )
+
+                imageUri = null
+            }
+            val launcher = rememberLauncherForActivityResult(
+                contract =
+                ActivityResultContracts.GetContent()
+            ) { uri: Uri? ->
+                imageUri = uri
+            }
+
+            FloatingActionButton(
+                modifier = Modifier
+                    .constrainAs(storageButton) {
+                        bottom.linkTo(parent.bottom, 16.dp)
+                        start.linkTo(parent.start, 16.dp)
+                    },
+                onClick = {
+                    launcher.launch("image/*")
+                },
+                backgroundColor = colorResource(id = R.color.purple_500),
+                contentColor = Color.White
+            ) {
+                Icon(Icons.Filled.Folder ,"Picture from storage")
+            }
+
+            //PROGRESSBAR FOR THE LOADING PROCESS
             val isLoading = remember { textRecognitionViewModel.getLoadingProgress() }
             CircularProgressIndicator(
                 modifier = Modifier

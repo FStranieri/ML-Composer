@@ -5,7 +5,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.*
-import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -27,17 +26,17 @@ import java.util.*
 
 class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
 
-    private val textRecognitionViewModel: TextRecognitionViewModel by viewModels()
-    private val textTranslationViewModel: TextTranslationViewModel by viewModels()
-
     @ExperimentalAnimationApi
     @ExperimentalPermissionsApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+        MLApplication.getInstance().apiKey = resources.getString(R.string.app_client_api_key)
 
         setContent {
+            val textRecognitionViewModel: TextRecognitionViewModel by viewModels()
+            val textTranslationViewModel: TextTranslationViewModel by viewModels()
             val navController = rememberNavController()
             val showTextRecognitionOutput = remember { textRecognitionViewModel.showOutput }
 
@@ -79,45 +78,6 @@ class MainActivity : AppCompatActivity(), CameraScanComposableInterface {
                 }
             }
         }
-
-        MLApplication.getInstance().apiKey = resources.getString(R.string.app_client_api_key)
-
-        manageTextRecognition()
-        manageTextTranslation()
-    }
-
-    private fun manageTextRecognition() {
-        textRecognitionViewModel.initializeMLLocalTextAnalyzer()
-        textRecognitionViewModel.getFailureOutput().observe(this, {
-            Toast.makeText(this@MainActivity, it.message, Toast.LENGTH_LONG).show()
-        })
-    }
-
-    private fun manageTextTranslation() {
-        textTranslationViewModel.initializeMLRemoteTranslator("en")
-        textTranslationViewModel.getFailureOutput().observe(this, {
-            Toast.makeText(this@MainActivity, it.message, Toast.LENGTH_LONG).show()
-        })
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.main_act_menu, menu);
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.action_scan_local -> {
-                textRecognitionViewModel.initializeMLLocalTextAnalyzer()
-            }
-            R.id.action_scan_remote -> {
-                textRecognitionViewModel.initializeMLRemoteTextAnalyzer()
-            }
-        }
-
-        item.isChecked = true
-
-        return true
     }
 
     override fun onOpenSettingsClick() {
